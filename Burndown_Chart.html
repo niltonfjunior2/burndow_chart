@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burndown Command Center</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* ═══════════════════════════════════════════════════
+           TEMA DO SISTEMA — claro por padrão, escuro se o SO
+           preferir via prefers-color-scheme
+        ═══════════════════════════════════════════════════ */
+        :root {
+            --bg-base:       #f0f2f5;
+            --bg-panel:      #ffffff;
+            --bg-card:       #f6f8fa;
+            --bg-input:      #ffffff;
+            --border:        #d0d7de;
+            --border-bright: #8c959f;
+            --text-primary:  #1f2328;
+            --text-secondary:#57606a;
+            --text-muted:    #8c959f;
+            --accent-blue:   #0969da;
+            --accent-green:  #1a7f37;
+            --accent-red:    #cf222e;
+            --accent-yellow: #9a6700;
+            --accent-purple: #6639ba;
+            --accent-orange: #bc4c00;
+            --ideal-color:   #8c959f;
+            --shadow:        0 1px 3px rgba(31,35,40,0.12), 0 4px 12px rgba(31,35,40,0.06);
+            --shadow-card:   0 1px 2px rgba(31,35,40,0.08);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-base:       #0d1117;
+                --bg-panel:      #161b22;
+                --bg-card:       #1c2333;
+                --bg-input:      #1c2333;
+                --border:        #30363d;
+                --border-bright: #484f58;
+                --text-primary:  #e6edf3;
+                --text-secondary:#8b949e;
+                --text-muted:    #484f58;
+                --accent-blue:   #58a6ff;
+                --accent-green:  #3fb950;
+                --accent-red:    #f85149;
+                --accent-yellow: #e3b341;
+                --accent-purple: #bc8cff;
+                --accent-orange: #ff7b35;
+                --ideal-color:   #484f58;
+                --shadow:        0 1px 4px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
+                --shadow-card:   0 1px 2px rgba(0,0,0,0.35);
+            }
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Syne', sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        /* ══════════ SETUP SCREEN ══════════ */
+        #setupWrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 48px);
+        }
+        .setup-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 36px 40px;
+            width: min(520px, 100%);
+            box-shadow: var(--shadow);
+        }
+        .setup-card h2 { font-size: 1.25em; font-weight: 800; margin-bottom: 6px; }
+        .setup-subtitle { color: var(--text-secondary); font-size: 0.875em; line-height: 1.6; margin-bottom: 22px; }
+
+        .prev-velocity-banner {
+            display: none;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent-blue);
+            border-radius: 8px;
+            padding: 13px 15px;
+            margin-bottom: 18px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.77em;
+            color: var(--text-secondary);
+            line-height: 1.75;
+        }
+        .prev-velocity-banner strong { color: var(--text-primary); }
+        .pv-title { font-size: 0.68em; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent-blue); margin-bottom: 5px; font-weight: 700; }
+
+        .setup-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+        .field-group  { display: flex; flex-direction: column; gap: 6px; }
+        .field-group label {
+            font-size: 0.72em;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+            letter-spacing: 1px; text-transform: uppercase; font-weight: 500;
+        }
+        .field-group input {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 13px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95em;
+            outline: none;
+            width: 100%;
+            transition: border-color 0.18s, box-shadow 0.18s;
+        }
+        .field-group input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
+        }
+        .field-group input::placeholder { color: var(--text-muted); }
+
+        .capacity-hint { font-family: 'JetBrains Mono', monospace; font-size: 0.68em; color: var(--accent-green); margin-top: 4px; min-height: 1em; }
+
+        .btn-launch {
+            width: 100%; padding: 12px;
+            background: var(--accent-blue); color: #fff;
+            font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.9em;
+            border: none; border-radius: 8px; cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+        .btn-launch:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn-launch:active { transform: translateY(0); }
+
+        /* ══════════ HEADER ══════════ */
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px;
+            margin-bottom: 22px; padding-bottom: 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .header-icon {
+            width: 40px; height: 40px; flex-shrink: 0;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2em;
+        }
+        h1 { font-size: 1.3em; font-weight: 800; letter-spacing: -0.3px; }
+        h1 span { color: var(--accent-blue); }
+        .header-badge {
+            font-family: 'JetBrains Mono', monospace; font-size: 0.62em;
+            background: rgba(88,166,255,0.1); color: var(--accent-blue);
+            border: 1px solid rgba(88,166,255,0.28); padding: 3px 10px;
+            border-radius: 20px; letter-spacing: 1px; text-transform: uppercase;
+        }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .sprint-day-counter { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--text-secondary); }
+        .sprint-day-counter strong { font-size: 1.35em; color: var(--text-primary); }
+
+        .btn-header-reset {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 13px;
+            background: transparent; color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.72em;
+            border: 1px solid var(--border); border-radius: 7px; cursor: pointer;
+            letter-spacing: 0.3px; transition: all 0.18s;
+        }
+        .btn-header-reset:hover { color: var(--accent-red); border-color: var(--accent-red); background: rgba(207,34,46,0.06); }
+
+        /* ══════════ LAYOUT ══════════ */
+        .main-grid { display: grid; grid-template-columns: 1fr 316px; gap: 16px; align-items: start; }
+        @media (max-width: 860px) { .main-grid { grid-template-columns: 1fr; } }
+
+        /* ══════════ PANEL ══════════ */
+        .panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; box-shadow: var(--shadow-card); }
+        .panel-title {
+            font-size: 0.65em; font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;
+            margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
+        }
+        .panel-title::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--accent-blue); flex-shrink:0; }
+        .panel-title.green::before  { background: var(--accent-green); }
+        .panel-title.yellow::before { background: var(--accent-yellow); }
+
+        /* ══════════ KPI CARDS ══════════ */
+        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+        .kpi-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 13px 15px;
+            position: relative; overflow: hidden; box-shadow: var(--shadow-card);
+        }
+        .kpi-card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; }
+        .kpi-card.blue::before   { background: var(--accent-blue); }
+        .kpi-card.green::before  { background: var(--accent-green); }
+        .kpi-card.yellow::before { background: var(--accent-yellow); }
+        .kpi-card.orange::before { background: var(--accent-orange); }
+        .kpi-label { font-family:'JetBrains Mono',monospace; font-size:0.62em; color:var(--text-muted); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:7px; }
+        .kpi-value { font-family:'JetBrains Mono',monospace; font-size:1.4em; font-weight:700; color:var(--text-primary); line-height:1; }
+        .kpi-value.blue   { color: var(--accent-blue); }
+        .kpi-value.green  { color: var(--accent-green); }
+        .kpi-value.yellow { color: var(--accent-yellow); }
+        .kpi-value.orange { color: var(--accent-orange); }
+        .kpi-sub { font-size:0.67em; color:var(--text-secondary); margin-top:4px; font-family:'JetBrains Mono',monospace; }
+
+        /* ══════════ CHART ══════════ */
+        .chart-area { position:relative; height:310px; }
+
+        /* ══════════ INPUT ══════════ */
+        .daily-input { display:flex; gap:10px; align-items:flex-end; }
+        .daily-input .field-group { flex:1; }
+        .btn-record {
+            padding: 10px 17px; background: var(--accent-green); color: #fff;
+            font-family: 'Syne',sans-serif; font-weight:700; font-size:0.82em;
+            border:none; border-radius:8px; cursor:pointer; white-space:nowrap;
+            transition: opacity 0.15s;
+        }
+        .btn-record:hover { opacity: 0.85; }
+
+        /* ══════════ ALERT BOX ══════════ */
+        .alert-box {
+            border-radius: 9px; padding: 11px 14px; margin-bottom: 14px;
+            font-size: 0.79em; line-height: 1.6; border: 1px solid; display:none;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .alert-box.info    { background:rgba(9,105,218,0.07);   border-color:rgba(9,105,218,0.28);   color:var(--accent-blue); }
+        .alert-box.warning { background:rgba(154,103,0,0.07);   border-color:rgba(154,103,0,0.28);   color:var(--accent-yellow); }
+        .alert-box.danger  { background:rgba(207,34,46,0.07);   border-color:rgba(207,34,46,0.28);   color:var(--accent-red); }
+        .alert-box.success { background:rgba(26,127,55,0.07);   border-color:rgba(26,127,55,0.28);   color:var(--accent-green); }
+        .alert-box.ahead   { background:rgba(102,57,186,0.07);  border-color:rgba(102,57,186,0.28);  color:var(--accent-purple); }
+        @media (prefers-color-scheme: dark) {
+            .alert-box.info    { background:rgba(88,166,255,0.07);  border-color:rgba(88,166,255,0.28); }
+            .alert-box.warning { background:rgba(227,179,65,0.08);  border-color:rgba(227,179,65,0.3); }
+            .alert-box.danger  { background:rgba(248,81,73,0.07);   border-color:rgba(248,81,73,0.28); }
+            .alert-box.success { background:rgba(63,185,80,0.07);   border-color:rgba(63,185,80,0.28); }
+            .alert-box.ahead   { background:rgba(188,140,255,0.07); border-color:rgba(188,140,255,0.28); }
+        }
+
+        /* ══════════ STATUS BAR ══════════ */
+        .status-bar {
+            display:flex; align-items:center; gap:9px; padding:9px 13px;
+            background:var(--bg-card); border:1px solid var(--border);
+            border-radius:8px; margin-bottom:13px;
+        }
+        .status-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+        @keyframes pg { 0%,100%{box-shadow:0 0 0 0 rgba(26,127,55,0.5)}  50%{box-shadow:0 0 0 5px transparent} }
+        @keyframes pp { 0%,100%{box-shadow:0 0 0 0 rgba(102,57,186,0.5)} 50%{box-shadow:0 0 0 5px transparent} }
+        @keyframes pr { 0%,100%{box-shadow:0 0 0 0 rgba(207,34,46,0.5)}  50%{box-shadow:0 0 0 5px transparent} }
+        @media (prefers-color-scheme: dark) {
+            @keyframes pg { 0%,100%{box-shadow:0 0 0 0 rgba(63,185,80,0.5)}   50%{box-shadow:0 0 0 5px transparent} }
+            @keyframes pp { 0%,100%{box-shadow:0 0 0 0 rgba(188,140,255,0.5)} 50%{box-shadow:0 0 0 5px transparent} }
+            @keyframes pr { 0%,100%{box-shadow:0 0 0 0 rgba(248,81,73,0.5)}   50%{box-shadow:0 0 0 5px transparent} }
+        }
+        .status-dot.on-track  { background:var(--accent-green);  animation:pg 2s infinite; }
+        .status-dot.ahead     { background:var(--accent-purple); animation:pp 2s infinite; }
+        .status-dot.behind    { background:var(--accent-red);    animation:pr 2s infinite; }
+        .status-dot.completed { background:var(--accent-blue); }
+        .status-text { font-family:'JetBrains Mono',monospace; font-size:0.76em; color:var(--text-secondary); }
+        .status-text strong { color:var(--text-primary); }
+
+        /* ══════════ PROGRESS BAR ══════════ */
+        .burn-rate-label { display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:0.67em; color:var(--text-secondary); margin-bottom:5px; }
+        .bar-bg { height:5px; background:var(--bg-card); border:1px solid var(--border); border-radius:3px; overflow:hidden; }
+        .bar-fill { height:100%; border-radius:3px; transition: width 0.5s ease, background 0.4s; }
+
+        /* ══════════ HISTORY ══════════ */
+        .history-list { display:flex; flex-direction:column; gap:5px; max-height:220px; overflow-y:auto; }
+        .history-list::-webkit-scrollbar { width:3px; }
+        .history-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+        .history-row {
+            display:grid; grid-template-columns:44px 1fr 1fr 20px;
+            align-items:center; gap:7px; padding:8px 11px;
+            background:var(--bg-card); border:1px solid var(--border);
+            border-radius:7px; font-family:'JetBrains Mono',monospace; font-size:0.73em;
+            animation: row-in 0.22s ease;
+        }
+        @keyframes row-in { from{opacity:0;transform:translateX(-5px)} to{opacity:1;transform:translateX(0)} }
+        .hr-day   { color:var(--text-muted); }
+        .hr-done  { color:var(--accent-green); }
+        .hr-rem   { color:var(--text-primary); font-weight:600; }
+        .hr-dot   { width:7px; height:7px; border-radius:50%; justify-self:center; }
+
+        /* ══════════ VELOCITY ══════════ */
+        .vel-display { display:flex; align-items:baseline; gap:5px; margin-top:6px; }
+        .vel-num { font-family:'JetBrains Mono',monospace; font-size:1.85em; font-weight:700; }
+        .vel-unit { font-family:'JetBrains Mono',monospace; font-size:0.77em; color:var(--text-secondary); }
+
+        /* ══════════ COMPLETE BANNER ══════════ */
+        .complete-banner {
+            display:none;
+            background:rgba(26,127,55,0.07); border:1px solid rgba(26,127,55,0.3);
+            border-radius:12px; padding:18px 22px; text-align:center; margin-bottom:18px;
+        }
+        @media (prefers-color-scheme: dark) {
+            .complete-banner { background:rgba(63,185,80,0.07); border-color:rgba(63,185,80,0.3); }
+        }
+        .complete-banner h2 { font-size:1.1em; color:var(--accent-green); margin-bottom:5px; }
+        .complete-banner p  { font-size:0.82em; color:var(--text-secondary); font-family:'JetBrains Mono',monospace; }
+
+        /* ══════════ MISC ══════════ */
+        .sep { height:1px; background:var(--border); margin:13px 0; }
+        .mini-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .ms-label { font-family:'JetBrains Mono',monospace; font-size:0.62em; color:var(--text-muted); text-transform:uppercase; letter-spacing:1.3px; margin-bottom:4px; }
+        .ms-val   { font-family:'JetBrains Mono',monospace; font-size:1.18em; font-weight:700; }
+        #desvioDisplay { font-family:'JetBrains Mono',monospace; font-size:0.79em; color:var(--text-secondary); line-height:1.75; }
+        .input-warn { font-family:'JetBrains Mono',monospace; font-size:0.71em; margin-top:7px; min-height:1.1em; line-height:1.5; }
+        .hidden { display:none !important; }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SETUP ═══════════════════════ -->
+<div id="setupWrapper">
+    <div class="setup-card">
+        <h2>🎯 Iniciar Sprint</h2>
+        <p class="setup-subtitle">Configure os parâmetros iniciais para ativar o painel de comando da sprint.</p>
+
+        <div class="prev-velocity-banner" id="pvBanner">
+            <div class="pv-title">📊 Dados da Sprint Anterior</div>
+            <div id="pvText"></div>
+        </div>
+
+        <div class="setup-fields">
+            <div class="field-group">
+                <label>Total de Horas</label>
+                <input type="number" id="totalHours" placeholder="Ex: 120" min="1">
+            </div>
+            <div class="field-group">
+                <label>Dias da Sprint</label>
+                <input type="number" id="sprintDays" placeholder="Ex: 10" min="1">
+                <div class="capacity-hint" id="capacityHint"></div>
+            </div>
+        </div>
+        <button class="btn-launch" onclick="initSprint()">⚡ Lançar Painel de Comando</button>
+    </div>
+</div>
+
+<!-- ═══════════════════════ DASHBOARD ═══════════════════════ -->
+<div id="dashboardWrapper" class="hidden">
+
+    <div class="header">
+        <div class="header-left">
+            <div class="header-icon">📊</div>
+            <h1>Burndown <span>Command Center</span></h1>
+            <span class="header-badge" id="sprintLabel">Sprint Ativa</span>
+        </div>
+        <div class="header-right">
+            <div class="sprint-day-counter">Dia <strong id="hDayNum">0</strong> / <span id="hTotalDays">—</span></div>
+            <button class="btn-header-reset" onclick="confirmReset()">↺ Reiniciar</button>
+        </div>
+    </div>
+
+    <div class="complete-banner" id="completeBanner">
+        <h2>🏁 Sprint Finalizada!</h2>
+        <p id="completeSummary"></p>
+    </div>
+
+    <div class="main-grid">
+
+        <!-- LEFT -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+            <div class="kpi-grid">
+                <div class="kpi-card blue">
+                    <div class="kpi-label">Horas Restantes</div>
+                    <div class="kpi-value blue" id="kpiRem">—</div>
+                    <div class="kpi-sub" id="kpiRemPct">—</div>
+                </div>
+                <div class="kpi-card green">
+                    <div class="kpi-label">Queimado Total</div>
+                    <div class="kpi-value green" id="kpiBurned">—</div>
+                    <div class="kpi-sub" id="kpiBurnedPct">—</div>
+                </div>
+                <div class="kpi-card yellow">
+                    <div class="kpi-label">Meta Diária Ajustada</div>
+                    <div class="kpi-value yellow" id="kpiAdj">—</div>
+                    <div class="kpi-sub">h/dia necessárias</div>
+                </div>
+                <div class="kpi-card orange">
+                    <div class="kpi-label">Velocidade Atual</div>
+                    <div class="kpi-value orange" id="kpiVel">—</div>
+                    <div class="kpi-sub">h/dia (média real)</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Gráfico Burndown</div>
+                <div class="chart-area"><canvas id="burndownChart"></canvas></div>
+            </div>
+
+            <div class="panel" id="inputPanel">
+                <div class="panel-title green">Registrar Progresso do Dia</div>
+                <div class="alert-box" id="alertBox"></div>
+                <div class="daily-input">
+                    <div class="field-group">
+                        <label id="dayLabel">Horas concluídas — Dia 1</label>
+                        <input type="number" id="hoursDone" placeholder="Horas queimadas hoje" min="0" step="0.5">
+                    </div>
+                    <button class="btn-record" onclick="recordProgress()">✓ Registrar</button>
+                </div>
+                <div class="input-warn" id="inputWarn"></div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+
+            <div class="panel">
+                <div class="panel-title">Status da Sprint</div>
+                <div class="status-bar" id="statusBar">
+                    <div class="status-dot on-track" id="statusDot"></div>
+                    <div class="status-text" id="statusText"><strong>Aguardando dados</strong></div>
+                </div>
+                <div class="burn-rate-label"><span>Progresso Geral</span><span id="progPct">0%</span></div>
+                <div class="bar-bg"><div class="bar-fill" id="progBar" style="width:0%;background:var(--accent-blue);"></div></div>
+                <div class="sep"></div>
+                <div class="mini-grid-2">
+                    <div><div class="ms-label">Dias restantes</div><div class="ms-val" id="daysLeft">—</div></div>
+                    <div><div class="ms-label">Taxa Ideal</div><div class="ms-val" id="idealRateEl" style="color:var(--ideal-color)">—</div></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title yellow">Desvio do Planejado</div>
+                <div id="desvioDisplay">Inicie o registro diário para ver análise de desvio.</div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Velocidade da Equipe</div>
+                <div class="vel-display">
+                    <div class="vel-num" id="velBig">—</div>
+                    <div class="vel-unit">h/dia</div>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:0.7em;color:var(--text-secondary);margin-top:5px;" id="velNote">Registre dias para calcular.</div>
+                <div class="sep"></div>
+                <div id="velComp" style="font-family:'JetBrains Mono',monospace;font-size:0.72em;color:var(--text-muted);line-height:1.75;">—</div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Histórico de Dias</div>
+                <div class="history-list" id="historyList">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:0.73em;color:var(--text-muted);text-align:center;padding:18px 0;">Nenhum dia registrado ainda.</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────────────
+   STORAGE
+───────────────────────────────────────────────────── */
+const S_SPRINT = 'bdc_sprint_v2';
+const S_PREV   = 'bdc_prev_vel_v2';
+
+function save()           { try { localStorage.setItem(S_SPRINT, JSON.stringify(sprint)); } catch(_) {} }
+function loadSprint()     { try { const r=localStorage.getItem(S_SPRINT); return r?JSON.parse(r):null; } catch(_){return null;} }
+function savePrev(vel,done,total,days) {
+    try { localStorage.setItem(S_PREV, JSON.stringify({vel,done,total,days,date:new Date().toLocaleDateString('pt-BR')})); } catch(_) {}
+}
+function loadPrev()       { try { const r=localStorage.getItem(S_PREV); return r?JSON.parse(r):null; } catch(_){return null;} }
+
+/* ─────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────── */
+let chart  = null;
+let sprint = null;
+
+function makeSprint(total, days) {
+    const rate  = total / days;
+    const ideal = Array.from({length: days+1}, (_,i) => +(total - i*rate).toFixed(2));
+    return { totalHours:total, days, currentDay:0, remainingHours:total,
+             idealRate:rate, idealPath:ideal, realPath:[total], history:[], finished:false };
+}
+
+/* ─────────────────────────────────────────────────────
+   BOOT
+───────────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', () => {
+    showPrevBanner();
+    document.getElementById('sprintDays').addEventListener('input', capHint);
+    document.getElementById('totalHours').addEventListener('input', capHint);
+
+    const saved = loadSprint();
+    if (saved) { sprint = saved; bootDash(); }
+});
+
+function showPrevBanner() {
+    const pv = loadPrev();
+    if (!pv) return;
+    document.getElementById('pvBanner').style.display = 'block';
+    document.getElementById('pvText').innerHTML =
+        `Sprint de <strong>${pv.days} dias</strong> — concluída em <strong>${pv.date}</strong><br>` +
+        `Velocidade média: <strong>${pv.vel.toFixed(1)} h/dia</strong> · ` +
+        `Entregue: <strong>${pv.done.toFixed(1)}h</strong> de ${pv.total}h`;
+}
+
+function capHint() {
+    const pv   = loadPrev();
+    const days = parseFloat(document.getElementById('sprintDays').value);
+    const el   = document.getElementById('capacityHint');
+    if (!pv || !days || days <= 0) { el.textContent = ''; return; }
+    el.textContent = `≈ ${(pv.vel * days).toFixed(1)}h pela velocidade anterior`;
+}
+
+/* ─────────────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────────────── */
+function initSprint() {
+    const h = parseFloat(document.getElementById('totalHours').value);
+    const d = parseInt(document.getElementById('sprintDays').value);
+    if (!h || !d || h<=0 || d<=0) { alert('Insira valores válidos para horas e dias.'); return; }
+    sprint = makeSprint(h, d);
+    save();
+    bootDash();
+}
+
+function bootDash() {
+    document.getElementById('setupWrapper').classList.add('hidden');
+    document.getElementById('dashboardWrapper').classList.remove('hidden');
+    document.getElementById('hTotalDays').textContent  = sprint.days;
+    document.getElementById('hDayNum').textContent     = sprint.currentDay;
+    document.getElementById('idealRateEl').textContent = sprint.idealRate.toFixed(1)+'h';
+    updateDayLabel();
+    updateKPIs();
+    renderChart();
+    rebuildHistory();
+    updateDesvio();
+    updateVelocity();
+    generateAlert();
+    if (sprint.finished) finishSprint(true);
+}
+
+/* ─────────────────────────────────────────────────────
+   RECORD
+───────────────────────────────────────────────────── */
+function recordProgress() {
+    const inp  = document.getElementById('hoursDone');
+    const warn = document.getElementById('inputWarn');
+    const val  = parseFloat(inp.value);
+    warn.textContent = '';
+
+    if (isNaN(val) || val < 0) { alert('Insira uma quantidade válida (≥ 0).'); return; }
+    if (sprint.currentDay >= sprint.days) { alert('Sprint finalizada.'); return; }
+
+    // ── CAP: não aceita mais do que as horas restantes ──
+    if (val > sprint.remainingHours) {
+        alert(`Máximo permitido: ${sprint.remainingHours.toFixed(1)}h (horas ainda em aberto).`);
+        inp.value = sprint.remainingHours;
+        return;
+    }
+
+    sprint.currentDay++;
+    sprint.remainingHours = Math.max(0, +(sprint.remainingHours - val).toFixed(2));
+    sprint.realPath.push(sprint.remainingHours);
+    sprint.history.push({ day:sprint.currentDay, done:val, remaining:sprint.remainingHours });
+
+    inp.value = '';
+    document.getElementById('hDayNum').textContent = sprint.currentDay;
+
+    updateDayLabel();
+    updateKPIs();
+    updateChart();
+    appendHistRow(sprint.history[sprint.history.length-1]);
+    updateDesvio();
+    updateVelocity();
+    generateAlert();
+    checkCompletionRisk(warn);
+    save();
+
+    if (sprint.remainingHours <= 0 || sprint.currentDay >= sprint.days) {
+        sprint.finished = true; save(); finishSprint(false);
+    }
+}
+
+/* Aviso de risco de meta não cumprida — Scrum Guide §Sprint */
+function checkCompletionRisk(el) {
+    const dLeft = sprint.days - sprint.currentDay;
+    if (dLeft <= 0 || sprint.remainingHours <= 0) return;
+    const need  = sprint.remainingHours / dLeft;
+    const ratio = need / sprint.idealRate;
+
+    if (ratio >= 2.0) {
+        el.style.color = 'var(--accent-red)';
+        el.innerHTML = `⚠️ Meta em risco severo: necessário <strong>${need.toFixed(1)}h/dia</strong> (${(ratio*100).toFixed(0)}% da taxa planejada). Scrum Guide recomenda renegociar o escopo com o PO.`;
+    } else if (ratio >= 1.5) {
+        el.style.color = 'var(--accent-yellow)';
+        el.innerHTML = `📌 Equipe precisará de <strong>${need.toFixed(1)}h/dia</strong> para cumprir a meta. Identifique impedimentos na Daily Scrum.`;
+    }
+}
+
+/* ─────────────────────────────────────────────────────
+   FINISH
+───────────────────────────────────────────────────── */
+function finishSprint(already) {
+    const done = sprint.totalHours - sprint.remainingHours;
+    const pct  = ((done/sprint.totalHours)*100).toFixed(1);
+    const avgV = sprint.history.length
+        ? sprint.history.reduce((a,h)=>a+h.done,0)/sprint.history.length : 0;
+
+    if (!already) savePrev(avgV, done, sprint.totalHours, sprint.days);
+
+    document.getElementById('completeBanner').style.display = 'block';
+    document.getElementById('completeSummary').textContent  =
+        `${pct}% das horas entregues · Velocidade média: ${avgV.toFixed(1)}h/dia`;
+    document.getElementById('inputPanel').classList.add('hidden');
+    document.getElementById('sprintLabel').textContent = 'Sprint Encerrada';
+    showAlert('success','🏁',`Sprint concluída! <strong>${pct}%</strong> entregue · velocidade média <strong>${avgV.toFixed(1)}h/dia</strong>.`);
+    setStatus('completed',`Encerrada — ${pct}% concluído`);
+}
+
+/* ─────────────────────────────────────────────────────
+   KPIs
+───────────────────────────────────────────────────── */
+function updateKPIs() {
+    const burned   = sprint.totalHours - sprint.remainingHours;
+    const bPct     = ((burned/sprint.totalHours)*100).toFixed(1);
+    const rPct     = (100-parseFloat(bPct)).toFixed(1);
+    const dLeft    = sprint.days - sprint.currentDay;
+    const adjRate  = dLeft > 0 ? (sprint.remainingHours/dLeft).toFixed(1) : '0';
+
+    document.getElementById('kpiRem').textContent      = sprint.remainingHours.toFixed(1)+'h';
+    document.getElementById('kpiRemPct').textContent   = `${rPct}% do total`;
+    document.getElementById('kpiBurned').textContent   = burned.toFixed(1)+'h';
+    document.getElementById('kpiBurnedPct').textContent= `${bPct}% concluído`;
+    document.getElementById('kpiAdj').textContent      = adjRate+'h';
+    document.getElementById('daysLeft').textContent    = dLeft;
+
+    const p = parseFloat(bPct);
+    document.getElementById('progPct').textContent = bPct+'%';
+    const bar = document.getElementById('progBar');
+    bar.style.width      = Math.min(p,100)+'%';
+    bar.style.background = p>=100?'var(--accent-green)':p>=60?'var(--accent-blue)':'var(--accent-yellow)';
+}
+
+/* ─────────────────────────────────────────────────────
+   VELOCITY
+───────────────────────────────────────────────────── */
+function updateVelocity() {
+    if (!sprint.history.length) return;
+    const avg  = sprint.history.reduce((a,h)=>a+h.done,0)/sprint.history.length;
+    const diff = avg - sprint.idealRate;
+    const sign = diff>=0?'+':'';
+    const col  = diff>0.5?'var(--accent-green)':diff<-0.5?'var(--accent-red)':'var(--accent-yellow)';
+    const msg  = diff>0.5?'✅ Acima do ritmo ideal':diff<-0.5?'⚠️ Abaixo do ritmo ideal':'➡️ No ritmo ideal';
+    document.getElementById('kpiVel').textContent  = avg.toFixed(1)+'h';
+    document.getElementById('velBig').textContent  = avg.toFixed(1);
+    document.getElementById('velNote').textContent = `Média de ${sprint.history.length} dia(s)`;
+    document.getElementById('velComp').innerHTML   =
+        `Taxa Ideal: <span style="color:var(--ideal-color)">${sprint.idealRate.toFixed(1)}h/dia</span><br>` +
+        `Desvio: <span style="color:${col}">${sign}${diff.toFixed(1)}h/dia</span><br>${msg}`;
+}
+
+/* ─────────────────────────────────────────────────────
+   DESVIO
+───────────────────────────────────────────────────── */
+function updateDesvio() {
+    if (!sprint.currentDay) return;
+    const exp   = sprint.idealPath[sprint.currentDay];
+    const act   = sprint.remainingHours;
+    const d     = act - exp;
+    const sign  = d>0?'+':'';
+    const col   = d>1?'var(--accent-red)':d<-1?'var(--accent-purple)':'var(--accent-green)';
+    const lbl   = d>1?'🔴 Atrasado':d<-1?'🟣 Adiantado':'🟢 No prazo';
+    document.getElementById('desvioDisplay').innerHTML =
+        `Status: <strong style="color:${col}">${lbl}</strong><br>` +
+        `Esperado agora: <span style="color:var(--text-primary)">${exp.toFixed(1)}h</span><br>` +
+        `Real agora: <span style="color:var(--text-primary)">${act.toFixed(1)}h</span><br>` +
+        `Diferença: <span style="color:${col}">${sign}${d.toFixed(1)}h</span>`;
+}
+
+/* ─────────────────────────────────────────────────────
+   ALERTAS — baseados no Scrum Guide
+
+   Limiares:
+   MUITO ADIANTADO  → velocidade real ≥ 180% da ideal
+     Motivo: a equipe está queimando quase o dobro do planejado;
+     o Scrum Guide orienta envolver o PO para puxar backlog e
+     garantir que o incremento permaneça valioso.
+
+   ADIANTADO        → velocidade real ≥ 130% da ideal
+     A sprint pode estar subestimada. PO deve avaliar novos itens.
+
+   MUITO ATRASADO   → taxa necessária ≥ 200% da ideal
+     Meta da Sprint praticamente inatingível sem intervenção imediata.
+     Scrum Guide: inspecionar a Meta e renegociar escopo com PO.
+
+   ATRASADO         → taxa necessária ≥ 150% da ideal
+     Ritmo insuficiente; impedimentos devem ser endereçados na Daily.
+─────────────────────────────────────────────────────── */
+function generateAlert() {
+    if (sprint.finished) return;
+    const dLeft = sprint.days - sprint.currentDay;
+    if (dLeft <= 0) return;
+
+    const needed     = sprint.remainingHours / dLeft;
+    const needRatio  = needed / sprint.idealRate;
+
+    const avgBurn    = sprint.history.length
+        ? sprint.history.reduce((a,h)=>a+h.done,0)/sprint.history.length
+        : sprint.idealRate;
+    const actRatio   = avgBurn / sprint.idealRate;
+
+    const pctUsed    = sprint.currentDay / sprint.days;
+
+    // MUITO ADIANTADO
+    if (actRatio >= 1.8) {
+        showAlert('ahead','🟣',
+            `<strong>Ritmo muito acelerado (${(actRatio*100).toFixed(0)}% da taxa planejada).</strong> ` +
+            `Velocidade atual: <strong>${avgBurn.toFixed(1)}h/dia</strong> vs ${sprint.idealRate.toFixed(1)}h/dia. ` +
+            `O Scrum Guide orienta envolver o PO para <strong>puxar itens do backlog</strong> ` +
+            `e garantir que o incremento entregue tenha valor real.`);
+        setStatus('ahead','Muito adiantado — puxar backlog');
+        return;
+    }
+
+    // ADIANTADO
+    if (actRatio >= 1.3) {
+        showAlert('ahead','🔵',
+            `<strong>Equipe adiantada (${(actRatio*100).toFixed(0)}% do ritmo ideal).</strong> ` +
+            `Avalie com o PO se há itens de valor a puxar do backlog ` +
+            `para enriquecer o incremento desta sprint.`);
+        setStatus('ahead',`Adiantado — ${avgBurn.toFixed(1)}h/dia`);
+        return;
+    }
+
+    // MUITO ATRASADO
+    if (needRatio >= 2.0) {
+        showAlert('danger','🚨',
+            `<strong>Meta da Sprint em risco crítico.</strong> ` +
+            `Restam <strong>${sprint.remainingHours.toFixed(1)}h</strong> em ${dLeft} dia(s), ` +
+            `exigindo <strong>${needed.toFixed(1)}h/dia</strong> (${(needRatio*100).toFixed(0)}% da taxa original). ` +
+            `Scrum Guide: inspecione se a Meta ainda é atingível e ` +
+            `<strong>renegocie o escopo com o PO</strong> imediatamente.`);
+        setStatus('behind','Crítico — meta em risco');
+        return;
+    }
+
+    // ATRASADO
+    if (needRatio >= 1.5) {
+        const urgNote = pctUsed >= 0.6
+            ? ` Com <strong>${(pctUsed*100).toFixed(0)}%</strong> da sprint consumida, o tempo é curto.` : '';
+        showAlert('warning','⚠️',
+            `<strong>Ritmo abaixo do necessário.</strong> ` +
+            `Meta requer <strong>${needed.toFixed(1)}h/dia</strong> (${(needRatio*100).toFixed(0)}% do planejado).${urgNote} ` +
+            `Identifique e remova impedimentos na próxima Daily Scrum.`);
+        setStatus('behind',`Atrasado — ${needed.toFixed(1)}h/dia necessários`);
+        return;
+    }
+
+    // NO PRAZO
+    showAlert('info','🟢',
+        `<strong>No prazo!</strong> Meta ajustada: <strong>${needed.toFixed(1)}h/dia</strong> ` +
+        `para cumprir <strong>${sprint.remainingHours.toFixed(1)}h</strong> em ${dLeft} dia(s).`);
+    setStatus('on-track',`No prazo — ${needed.toFixed(1)}h/dia`);
+}
+
+function showAlert(type, icon, msg) {
+    const b = document.getElementById('alertBox');
+    b.className   = 'alert-box '+type;
+    b.style.display = 'block';
+    b.innerHTML   = `<span style="margin-right:5px">${icon}</span>${msg}`;
+}
+
+function setStatus(state, text) {
+    document.getElementById('statusDot').className  = 'status-dot '+state;
+    document.getElementById('statusText').innerHTML = `<strong>${text}</strong>`;
+}
+
+/* ─────────────────────────────────────────────────────
+   CHART
+───────────────────────────────────────────────────── */
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+function ptColors() {
+    return sprint.realPath.map((real,i) => {
+        const ideal = sprint.idealPath[i] ?? sprint.idealPath[sprint.idealPath.length-1];
+        const d = real - ideal;
+        return d>1 ? css('--accent-red') : d<-1 ? css('--accent-purple') : css('--accent-green');
+    });
+}
+
+function renderChart() {
+    const ctx    = document.getElementById('burndownChart').getContext('2d');
+    const labels = Array.from({length:sprint.days+1},(_,i)=>'D'+i);
+    if (chart) { chart.destroy(); chart=null; }
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Ideal (Planejado)',
+                    data: sprint.idealPath,
+                    borderColor: css('--ideal-color'),
+                    borderDash: [5,4], borderWidth:1.5,
+                    fill:false, tension:0, pointRadius:0, pointHoverRadius:4
+                },
+                {
+                    label: 'Real (Progresso)',
+                    data: sprint.realPath,
+                    borderColor: css('--accent-blue'),
+                    borderWidth: 2.5,
+                    fill: { target:0, above:'rgba(207,34,46,0.07)', below:'rgba(9,105,218,0.07)' },
+                    tension: 0.15,
+                    pointRadius: 5,
+                    pointBackgroundColor: ptColors(),
+                    pointBorderColor: css('--bg-panel'),
+                    pointBorderWidth: 2, pointHoverRadius:7
+                }
+            ]
+        },
+        options: {
+            responsive:true, maintainAspectRatio:false,
+            animation:{ duration:380, easing:'easeInOutQuart' },
+            scales: {
+                y: {
+                    beginAtZero:true,
+                    grid:  { color: css('--border') },
+                    ticks: { color:css('--text-secondary'), font:{family:"'JetBrains Mono'",size:11} },
+                    title: { display:true, text:'Horas Restantes', color:css('--text-muted'), font:{family:"'JetBrains Mono'",size:11} }
+                },
+                x: {
+                    grid:  { color: css('--border') },
+                    ticks: { color:css('--text-secondary'), font:{family:"'JetBrains Mono'",size:11} },
+                    title: { display:true, text:'Dias da Sprint', color:css('--text-muted'), font:{family:"'JetBrains Mono'",size:11} }
+                }
+            },
+            plugins: {
+                legend: { labels:{ color:css('--text-secondary'), font:{family:"'JetBrains Mono'",size:11}, usePointStyle:true, pointStyle:'line' } },
+                tooltip: {
+                    backgroundColor:css('--bg-panel'), borderColor:css('--border'), borderWidth:1,
+                    titleColor:css('--text-primary'), bodyColor:css('--text-secondary'),
+                    titleFont:{family:"'JetBrains Mono'"}, bodyFont:{family:"'JetBrains Mono'"},
+                    callbacks:{ label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(1)}h` }
+                }
+            }
+        }
+    });
+}
+
+function updateChart() {
+    if (!chart) return;
+    chart.data.datasets[1].data = sprint.realPath;
+    chart.data.datasets[1].pointBackgroundColor = ptColors();
+    chart.update();
+}
+
+/* ─────────────────────────────────────────────────────
+   HISTORY LIST
+───────────────────────────────────────────────────── */
+function dotCol(entry) {
+    const ideal = sprint.idealPath[entry.day] ?? sprint.idealPath[sprint.idealPath.length-1];
+    const d = entry.remaining - ideal;
+    return d>1 ? css('--accent-red') : d<-1 ? css('--accent-purple') : css('--accent-green');
+}
+
+function appendHistRow(e) {
+    const list = document.getElementById('historyList');
+    if (sprint.history.length === 1) list.innerHTML = '';
+    list.innerHTML += rowHTML(e);
+    list.scrollTop = list.scrollHeight;
+}
+
+function rebuildHistory() {
+    const list = document.getElementById('historyList');
+    if (!sprint.history.length) return;
+    list.innerHTML = sprint.history.map(rowHTML).join('');
+}
+
+function rowHTML(e) {
+    return `<div class="history-row">
+        <span class="hr-day">D${e.day}</span>
+        <span class="hr-done">-${e.done.toFixed(1)}h</span>
+        <span class="hr-rem">${e.remaining.toFixed(1)}h</span>
+        <span class="hr-dot" style="background:${dotCol(e)}"></span>
+    </div>`;
+}
+
+/* ─────────────────────────────────────────────────────
+   MISC
+───────────────────────────────────────────────────── */
+function updateDayLabel() {
+    document.getElementById('dayLabel').textContent = sprint.currentDay < sprint.days
+        ? `Horas concluídas — Dia ${sprint.currentDay+1}`
+        : 'Sprint Finalizada';
+}
+
+function confirmReset() {
+    if (confirm('Encerrar esta sprint e voltar ao início?\n\nOs dados da sprint atual serão descartados. A velocidade registrada será preservada.')) {
+        try { localStorage.removeItem(S_SPRINT); } catch(_) {}
+        location.reload();
+    }
+}
+</script>
+</body>
+</html>
