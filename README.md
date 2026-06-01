@@ -1,7 +1,3 @@
-Aqui está uma sugestão de `README.md` detalhada e estruturada para o seu novo projeto. Ele segue a mesma linha educacional e profissional do anterior, destacando agora as métricas ágeis e a inteligência baseada no *Scrum Guide* que você implementou.
-
----
-
 # 📈 Burndown Command Center
 
 Um painel de controle interativo e responsivo desenvolvido para acompanhar o progresso de Sprints através de um **Gráfico de Burndown**. Esta aplicação ajuda indivíduos e equipes ágeis a monitorarem o ritmo de trabalho (velocidade), identificarem desvios do planejamento e receberem alertas estratégicos com base nas práticas do *Scrum Guide*.
