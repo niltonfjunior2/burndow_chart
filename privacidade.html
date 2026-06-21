@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidade - Burndown Center</title>
+    <link rel="icon" href="Burndown.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base:       #f0f2f5;
+            --bg-panel:      #ffffff;
+            --bg-card:       #f6f8fa;
+            --border:        #d0d7de;
+            --text-primary:  #1f2328;
+            --text-secondary:#57606a;
+            --text-muted:    #8c959f;
+            --accent-green:  #1a7f37;
+            --accent-blue:   #0969da;
+            --shadow:        0 1px 3px rgba(31,35,40,0.12), 0 4px 12px rgba(31,35,40,0.06);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-base:       #0d1117;
+                --bg-panel:      #161b22;
+                --bg-card:       #1c2333;
+                --border:        #30363d;
+                --text-primary:  #e6edf3;
+                --text-secondary:#8b949e;
+                --text-muted:    #484f58;
+                --accent-green:  #3fb950;
+                --accent-blue:   #58a6ff;
+                --shadow:        0 1px 4px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
+            }
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Syne', sans-serif; background: var(--bg-base); color: var(--text-primary); min-height: 100vh; padding: 24px; display: flex; flex-direction: column; }
+        
+        .container { flex: 1; max-width: 800px; margin: 0 auto; width: 100%; padding-top: 40px; }
+        .panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 32px; box-shadow: var(--shadow); }
+        h1 { font-size: 2em; font-weight: 800; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        h2 { font-size: 1.2em; font-weight: 700; margin: 24px 0 12px 0; color: var(--text-primary); }
+        p { font-size: 0.95em; line-height: 1.6; color: var(--text-secondary); margin-bottom: 16px; font-family: 'JetBrains Mono', monospace; }
+        .back-link { display: inline-block; margin-top: 24px; font-weight: 700; color: var(--accent-blue); text-decoration: none; font-size: 0.9em; }
+
+        .banner-stateless { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); padding: 16px; border-radius: 8px; color: var(--accent-green); font-weight: 700; font-size: 1.1em; display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+
+        /* FOOTER */
+        footer { margin-top: 50px; padding-top: 24px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; font-family: 'Syne', sans-serif; }
+        .footer-left { display: flex; align-items: center; gap: 12px; filter: grayscale(1); transition: filter 0.3s; }
+        .footer-left:hover { filter: grayscale(0); }
+        .footer-left img { height: 32px; width: auto; opacity: 0.9; }
+        .footer-title { font-weight: 800; color: var(--text-primary); font-size: 0.95em; letter-spacing: -0.2px; }
+        .footer-links { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+        .footer-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.85em; font-weight: 700; transition: color 0.15s; }
+        .footer-links a:hover { color: var(--accent-blue); }
+        .footer-copy { font-family: 'JetBrains Mono', monospace; font-size: 0.7em; color: var(--text-muted); text-align: right; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="panel">
+        <h1>Política de Privacidade</h1>
+
+        <div class="banner-stateless">
+            🛡️ 100% Stateless: Não possuímos banco de dados.
+        </div>
+        
+        <h2>1. Resumo sobre Rastreamento</h2>
+        <p>A privacidade das métricas da sua equipe é uma prioridade fundamental neste projeto. O Burndown Command Center não utiliza bancos de dados em nuvem para registrar as horas, nomes ou descrições dos tickets da sua Sprint.</p>
+        
+        <h2>2. Armazenamento Local (LocalStorage)</h2>
+        <p>Todo o progresso registrado, as Sprints configuradas e o histórico da Velocidade da equipe são guardados exclusivamente no <strong>localStorage</strong> do navegador que você está usando (no seu próprio computador ou dispositivo). Nenhuma dessas informações é transmitida para os nossos servidores.</p>
+        
+        <h2>3. Hospedagem e Analíticos de Acesso</h2>
+        <p>A estrutura de hospedagem pode processar requisições para a entrega dos arquivos (HTML, CSS e Imagens) capturando métricas de tráfego genéricas, anonimizadas, visando puramente a garantia de performance da página web e observância de métricas de uptime.</p>
+        
+        <a href="index.html" class="back-link">&larr; Voltar ao Painel</a>
+    </div>
+</div>
+
+<footer>
+    <div class="footer-left">
+        <img src="Burndown.png" alt="Burndown Command Center">
+        <span class="footer-title">Burndown Center</span>
+    </div>
+    <div class="footer-links">
+        <a href="sobre.html">Sobre</a>
+        <a href="termos.html">Termos</a>
+        <a href="privacidade.html">Privacidade</a>
+    </div>
+    <div class="footer-copy">
+        © 2026 Nilton F. Junior.<br>
+        Ferramenta de Apoio Ágil.
+    </div>
+</footer>
+
+</body>
+</html>
